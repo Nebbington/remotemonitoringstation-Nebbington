@@ -4,7 +4,12 @@
 
 #include <Wire.h>
 
-
+// ESP32Servo Start
+#include <ESP32Servo.h>
+Servo myservo;  // create servo object to control a servo
+int servoPin = 12;
+boolean blindsOpen = false;
+// ESP32Servo End
 
 // Wifi & Webserver
 #include "WiFi.h"
@@ -33,8 +38,8 @@ Adafruit_ADT7410 tempsensor = Adafruit_ADT7410();
 //Motor shield START
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
-Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
-Adafruit_DCMotor *myMotor = AFMS.getMotor(1);
+Adafruit_MotorShield AFMS = Adafruit_MotorShield();
+Adafruit_DCMotor *myMotor = AFMS.getMotor(3);
 //Motor shield END
 
 // MiniTFT Start
@@ -82,7 +87,7 @@ void setup() {
 
   tft.setRotation(1);
   tft.fillScreen(ST77XX_BLACK);
-
+  AFMS.begin(); // Motor Shield Start
 
   Serial.println("ADT7410 demo");
 
@@ -96,6 +101,14 @@ void setup() {
   // sensor takes 250 ms to get first readings
   delay(250);
 
+  // ESP32Servo Start
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  myservo.setPeriodHertz(50);    // standard 50 hz servo
+  myservo.attach(servoPin, 1000, 2000); // attaches the servo on pin 18 to the servo object
+  // ESP32Servo End
 
   // Wifi Configuration
   WiFi.begin(ssid, password);
@@ -152,6 +165,8 @@ void loop() {
 
   builtinLED();
   updateTemperature();
+  automaticFan(20.0);
+  windowBlinds();
   delay(LOOPDELAY); // To allow time to publish new code.
 }
 
@@ -187,6 +202,17 @@ void logEvent(String dataToLog) {
   Serial.println(logEntry);
 }
 
+void windowBlinds() {
+  uint32_t buttons = ss.readButtons();
+  if (! (buttons & TFTWING_BUTTON_A)) {
+    if (blindsOpen) {
+      myservo.write(0);
+    } else {
+      myservo.write(180);
+    }
+    blindsOpen = !blindsOpen;
+  }
+}
 
 void tftDrawText(String text, uint16_t color) {
   tft.fillScreen(ST77XX_BLACK);
@@ -208,12 +234,14 @@ void updateTemperature() {
   delay(100);
 }
 
-void automaticFan(float tempeatureThreshold) {
-if (c < temperatureThreshold) {
-  //Motor off
-  { else {
-    //Motor on
-  }
-}
+void automaticFan(float temperatureThreshold) {
+  float c = tempsensor.readTempC();
+  myMotor->setSpeed(100);
+  if (c < temperatureThreshold) {
+    myMotor->run(RELEASE);
+    Serial.println("stop");
+  } else {
+    myMotor->run(FORWARD);
+    Serial.println("forward");
   }
 }

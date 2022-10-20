@@ -64,6 +64,9 @@ RTC_PCF8523 rtc;
 #include <Adafruit_MotorShield.h>
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *myMotor = AFMS.getMotor(4);
+
+bool fanEnabled = false;            // If the fan is on or off.
+bool automaticFanControl = true;    // Automatic or manual control
 //Motor shield END
 
 // MiniTFT Start
@@ -182,10 +185,9 @@ void setup() {
 }
 
 void loop() {
-
   builtinLED();
   updateTemperature();
-  automaticFan(27.0);
+  fanControl();
   windowBlinds();
   delay(LOOPDELAY); // To allow time to publish new code.
 }
@@ -257,10 +259,19 @@ void automaticFan(float temperatureThreshold) {
   float c = tempsensor.readTempC();
   myMotor->setSpeed(100);
   if (c < temperatureThreshold) {
-    myMotor->run(RELEASE);
-    //Serial.println("stop");
+    fanEnabled = false;
   } else {
+    fanEnabled = true;
+  }
+}
+
+void fanControl() {
+  if (automaticFanControl) {
+    automaticFan(26.0);
+  }
+  if (fanEnabled) {
     myMotor->run(FORWARD);
-    //Serial.println("forward");
+  } else {
+    myMotor->run(RELEASE);
   }
 }
